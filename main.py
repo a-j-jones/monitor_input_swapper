@@ -7,14 +7,21 @@ import pywinusb.hid as hid
 from PIL import Image
 from pystray import Icon, Menu, MenuItem
 
-_MONITORENUMPROC = WINFUNCTYPE(BOOL, HMONITOR, HDC, POINTER(RECT), LPARAM)
-
+# Codes for different monitor inputs (REF: https://github.com/dot-osk/monitor_ctrl/blob/master/vcp_code.py)
+# For more details, which I didn't use... (https://glenwing.github.io/docs/VESA-EDDC-1.2.pdf)
 INPUT_CODES = {
     "DP1": 0x0F,
     "DP2": 0x10,
     "HDMI1": 0x11,
     "HDMI2": 0x12
 }
+
+# Which monitor input to use when keyboard is connected/disconnected
+PLUGGED_IN = "DP2"
+UNPLUGGED = "DP1"
+KEYBOARD_NAME = "Corsair K70R Gaming Keyboard"
+
+_MONITORENUMPROC = WINFUNCTYPE(BOOL, HMONITOR, HDC, POINTER(RECT), LPARAM)
 
 
 class _PHYSICAL_MONITOR(Structure):
@@ -69,7 +76,7 @@ def keyboard_connected():
     devices = hid.HidDeviceFilter().get_devices()
     try:
         for device in devices:
-            if device.product_name == "Corsair K70R Gaming Keyboard":
+            if device.product_name == KEYBOARD_NAME:
                 return True
     except Exception:
         return True
@@ -97,11 +104,11 @@ def main():
         if keyboard_state != connected:
             try:
                 if connected:
-                    print("Keyboard connected, changing to DP2")
-                    set_input("DP2")
+                    print(f"Keyboard connected, changing to {PLUGGED_IN}")
+                    set_input(PLUGGED_IN)
                 else:
-                    print("Keyboard disconnected, changing to DP1")
-                    set_input("DP1")
+                    print(f"Keyboard disconnected, changing to {UNPLUGGED}")
+                    set_input(UNPLUGGED)
             except Exception as e:
                 print(f"Error: {e}")
             finally:
@@ -132,7 +139,7 @@ if __name__ == "__main__":
 
     icon = Icon(
         'WindowSwapper',
-        Image.open("icon.png"),
+        Image.open("icon.jpg"),
         menu=Menu(
             MenuItem('Paused', pause_swapper, checked=lambda item: paused),
             MenuItem('Exit', exit_program)
