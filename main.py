@@ -1,8 +1,11 @@
+import threading
 import time
 from ctypes import windll, byref, Structure, WinError, POINTER, WINFUNCTYPE
 from ctypes.wintypes import BOOL, HMONITOR, HDC, RECT, LPARAM, DWORD, BYTE, WCHAR, HANDLE
 
 import pywinusb.hid as hid
+from PIL import Image
+from pystray import Icon, Menu, MenuItem
 
 _MONITORENUMPROC = WINFUNCTYPE(BOOL, HMONITOR, HDC, POINTER(RECT), LPARAM)
 
@@ -81,8 +84,15 @@ def set_input(input_str: str):
 
 
 def main():
+    global paused, stopped
+
     keyboard_state = True
-    while True:
+
+    while not stopped:
+        if paused:
+            time.sleep(0.1)
+            continue
+
         connected = keyboard_connected()
         if keyboard_state != connected:
             try:
@@ -92,16 +102,41 @@ def main():
                 else:
                     print("Keyboard disconnected, changing to DP1")
                     set_input("DP1")
-            except:
-                pass
+            except Exception as e:
+                print(f"Error: {e}")
             finally:
                 keyboard_state = connected
 
         time.sleep(0.1)
 
 
+def pause_swapper(icon, item):
+    global paused
+    paused = not item.checked
+    print(f"Paused: {paused}")
+
+
+def exit_program(icon, item):
+    global stopped
+    stopped = True
+    icon.stop()
+
+
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        pass
+    paused = False
+    stopped = False
+
+    swapper = threading.Thread(target=main)
+    swapper.daemon = True
+    swapper.start()
+
+    icon = Icon(
+        'WindowSwapper',
+        Image.open("icon.png"),
+        menu=Menu(
+            MenuItem('Paused', pause_swapper, checked=lambda item: paused),
+            MenuItem('Exit', exit_program)
+        )
+    )
+
+    icon.run()
